@@ -267,6 +267,8 @@ public class DatabaseManager {
                 LOGGER.info("Database connection restored, retrying save");
             } else {
                 LOGGER.warn("Cannot save message - database unavailable");
+                // Close Hibernate to stop background threads
+                close();
                 return false;
             }
         }
@@ -336,6 +338,8 @@ public class DatabaseManager {
                 LOGGER.info("Database connection restored, retrying find");
             } else {
                 LOGGER.warn("Cannot find messages - database unavailable");
+                // Close Hibernate to stop background threads
+                close();
                 return java.util.List.of();
             }
         }
@@ -370,6 +374,8 @@ public class DatabaseManager {
         if (!databaseAvailable || messageRepository == null) {
             // Re-test connection if previously unavailable
             if (!testConnection()) {
+                // Close Hibernate to stop background threads
+                close();
                 return java.util.List.of();
             }
         }
@@ -401,6 +407,8 @@ public class DatabaseManager {
         if (!databaseAvailable || messageRepository == null) {
             // Re-test connection if previously unavailable
             if (!testConnection()) {
+                // Close Hibernate to stop background threads
+                close();
                 return 0L;
             }
         }
