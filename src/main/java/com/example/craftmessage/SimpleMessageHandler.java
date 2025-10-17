@@ -33,32 +33,23 @@ public class SimpleMessageHandler {
                             messageText
                         );
 
-                        // Check if database is available using Hibernate 6.x
-                        boolean dbAvailable =
-                            DatabaseManager.isDatabaseAvailable();
-
-                        if (dbAvailable) {
-                            try {
-                                boolean success = DatabaseManager.saveMessage(
-                                    playerUuid,
-                                    messageText
-                                );
-                                if (!success) {
-                                    LOGGER.error(
-                                        "Failed to save message for player {}",
-                                        playerUuid
-                                    );
-                                }
-                            } catch (Exception e) {
-                                LOGGER.error(
-                                    "Failed to save message for player {}",
-                                    playerUuid,
-                                    e
+                        // Try to save message with connection failure detection
+                        try {
+                            boolean success = DatabaseManager.saveMessage(
+                                playerUuid,
+                                messageText
+                            );
+                            if (!success) {
+                                LOGGER.warn(
+                                    "Message not saved for player {} - database unavailable",
+                                    playerUuid
                                 );
                             }
-                        } else {
-                            LOGGER.warn(
-                                "Database not available - message not saved"
+                        } catch (Exception e) {
+                            LOGGER.error(
+                                "Failed to save message for player {}",
+                                playerUuid,
+                                e
                             );
                         }
                     } catch (Exception e) {

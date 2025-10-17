@@ -52,12 +52,44 @@ public class MessageRepository {
             );
             return Optional.of(message);
         } catch (Exception e) {
-            LOGGER.error("Failed to save message", e);
+            // Don't log stack trace for database connection failures
+            if (
+                e.getMessage() != null &&
+                (e.getMessage().contains("FATAL: terminating connection") ||
+                    e.getMessage().contains("SQL Error") ||
+                    e.getMessage().contains("could not execute statement"))
+            ) {
+                LOGGER.warn(
+                    "Failed to save message - database connection lost"
+                );
+            } else {
+                LOGGER.error("Failed to save message", e);
+            }
             if (transaction != null && transaction.isActive()) {
                 try {
                     transaction.rollback();
                 } catch (Exception rollbackEx) {
-                    LOGGER.error("Failed to rollback transaction", rollbackEx);
+                    // Don't log stack trace for rollback failures on closed connections
+                    if (
+                        rollbackEx.getMessage() != null &&
+                        (rollbackEx
+                                .getMessage()
+                                .contains("Соединение уже было закрыто") ||
+                            rollbackEx
+                                .getMessage()
+                                .contains(
+                                    "Unable to rollback against JDBC Connection"
+                                ))
+                    ) {
+                        LOGGER.debug(
+                            "Rollback failed - connection already closed"
+                        );
+                    } else {
+                        LOGGER.error(
+                            "Failed to rollback transaction",
+                            rollbackEx
+                        );
+                    }
                 }
             }
             return Optional.empty();

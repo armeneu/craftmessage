@@ -14,13 +14,8 @@ public class MessageScreen extends Screen {
 
     public MessageScreen() {
         super(Text.literal("Send Message"));
-        // Check if database is available using Hibernate with error handling
-        try {
-            this.databaseAvailable = DatabaseManager.isDatabaseAvailable();
-        } catch (Exception e) {
-            // Log error but don't crash - allow screen to open without database
-            this.databaseAvailable = false;
-        }
+        // Database is only available on server side
+        this.databaseAvailable = false;
     }
 
     @Override

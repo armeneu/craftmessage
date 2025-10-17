@@ -47,7 +47,17 @@ public class DatabaseManager {
             return;
         }
 
-        LOGGER.info("Starting Hibernate initialization...");
+        // First check if database connection is even possible
+        if (!canConnectToDatabase()) {
+            LOGGER.debug(
+                "Database connection not available, skipping Hibernate initialization"
+            );
+            initialized = true;
+            databaseAvailable = false;
+            return;
+        }
+
+        LOGGER.debug("Starting Hibernate initialization...");
 
         try {
             // Use database.properties for configuration
@@ -83,6 +93,18 @@ public class DatabaseManager {
             );
             properties.put("hibernate.format_sql", "true");
 
+            // Hibernate logging settings to reduce verbosity
+            properties.put("hibernate.log.level", "WARN");
+            properties.put("hibernate.show_sql", "false");
+            properties.put("hibernate.format_sql", "false");
+            properties.put("hibernate.generate_statistics", "false");
+
+            // PostgreSQL driver logging settings to reduce verbosity
+            properties.put("org.postgresql.level", "WARN");
+            properties.put("org.postgresql.util", "WARN");
+            properties.put("org.postgresql.core", "WARN");
+            properties.put("org.postgresql.jdbc", "WARN");
+
             // Connection pool settings from properties file
             properties.put(
                 "hibernate.connection.pool_size",
@@ -100,7 +122,7 @@ public class DatabaseManager {
                     "craftmessage"
                 );
 
-                LOGGER.info(
+                LOGGER.debug(
                     "Using database configuration: {}",
                     DatabaseConfig.getUrl()
                 );
@@ -141,7 +163,7 @@ public class DatabaseManager {
                     messageRepository.count();
                     databaseAvailable = true;
                 } catch (Exception e) {
-                    LOGGER.error(
+                    LOGGER.debug(
                         "Database connection test failed: {}",
                         e.getMessage()
                     );
@@ -156,16 +178,60 @@ public class DatabaseManager {
             if (databaseAvailable) {
                 LOGGER.info("Hibernate initialization completed successfully");
             } else {
-                LOGGER.warn(
+                LOGGER.debug(
                     "Hibernate initialized but database connection unavailable"
                 );
             }
         } catch (Exception e) {
-            LOGGER.error("Failed to initialize Hibernate: {}", e.getMessage());
+            LOGGER.debug("Failed to initialize Hibernate: {}", e.getMessage());
             entityManagerFactory = null;
             messageRepository = null;
             initialized = true;
             databaseAvailable = false;
+        }
+    }
+
+    /**
+     * Simple connection test without Hibernate initialization
+     */
+    private static boolean canConnectToDatabase() {
+        try {
+            java.sql.DriverManager.getConnection(
+                DatabaseConfig.getUrl(),
+                DatabaseConfig.getUsername(),
+                DatabaseConfig.getPassword()
+            ).close();
+            return true;
+        } catch (Exception e) {
+            LOGGER.debug(
+                "Simple database connection test failed: {}",
+                e.getMessage()
+            );
+            return false;
+        }
+    }
+
+    /**
+     * Test database connection and update availability status
+     */
+    public static boolean testConnection() {
+        if (!initialized) {
+            initialize();
+        }
+
+        if (messageRepository == null) {
+            databaseAvailable = false;
+            return false;
+        }
+
+        try {
+            messageRepository.count();
+            databaseAvailable = true;
+            return true;
+        } catch (Exception e) {
+            LOGGER.debug("Database connection test failed: {}", e.getMessage());
+            databaseAvailable = false;
+            return false;
         }
     }
 
@@ -196,7 +262,20 @@ public class DatabaseManager {
         }
 
         if (!databaseAvailable || messageRepository == null) {
-            LOGGER.warn("Cannot save message - database unavailable");
+            // Re-test connection if previously unavailable
+            if (testConnection()) {
+                LOGGER.info("Database connection restored, retrying save");
+            } else {
+                LOGGER.warn("Cannot save message - database unavailable");
+                return false;
+            }
+        }
+
+        // Additional safety check - if we know database is unavailable, don't even try Hibernate operations
+        if (!databaseAvailable) {
+            LOGGER.warn(
+                "Cannot save message - database unavailable (safety check)"
+            );
             return false;
         }
 
@@ -215,13 +294,28 @@ public class DatabaseManager {
                 );
                 return true;
             } else {
-                LOGGER.error(
+                LOGGER.warn(
                     "Failed to save message - repository returned empty"
                 );
                 return false;
             }
         } catch (Exception e) {
-            LOGGER.error("Failed to save message: {}", e.getMessage());
+            // Test connection and update availability on failure
+            if (
+                e.getMessage() != null &&
+                (e.getMessage().contains("FATAL: terminating connection") ||
+                    e.getMessage().contains("SQL Error") ||
+                    e.getMessage().contains("could not execute statement"))
+            ) {
+                // Reset Hibernate state when database connection is lost
+                close();
+                databaseAvailable = false;
+                LOGGER.warn(
+                    "Failed to save message - database connection lost"
+                );
+            } else {
+                LOGGER.error("Failed to save message: {}", e.getMessage());
+            }
             return false;
         }
     }
@@ -237,8 +331,13 @@ public class DatabaseManager {
         }
 
         if (!databaseAvailable || messageRepository == null) {
-            LOGGER.warn("Cannot find messages - database unavailable");
-            return java.util.List.of();
+            // Re-test connection if previously unavailable
+            if (testConnection()) {
+                LOGGER.info("Database connection restored, retrying find");
+            } else {
+                LOGGER.warn("Cannot find messages - database unavailable");
+                return java.util.List.of();
+            }
         }
 
         try {
@@ -247,6 +346,15 @@ public class DatabaseManager {
             );
         } catch (Exception e) {
             LOGGER.error("Failed to find messages: {}", e.getMessage());
+            // Test connection and update availability on failure
+            if (
+                e.getMessage() != null &&
+                (e.getMessage().contains("FATAL: terminating connection") ||
+                    e.getMessage().contains("SQL Error") ||
+                    e.getMessage().contains("could not execute statement"))
+            ) {
+                testConnection(); // Update availability status
+            }
             return java.util.List.of();
         }
     }
@@ -260,12 +368,24 @@ public class DatabaseManager {
         }
 
         if (!databaseAvailable || messageRepository == null) {
-            return java.util.List.of();
+            // Re-test connection if previously unavailable
+            if (!testConnection()) {
+                return java.util.List.of();
+            }
         }
 
         try {
             return messageRepository.findAll();
         } catch (Exception e) {
+            // Test connection and update availability on failure
+            if (
+                e.getMessage() != null &&
+                (e.getMessage().contains("FATAL: terminating connection") ||
+                    e.getMessage().contains("SQL Error") ||
+                    e.getMessage().contains("could not execute statement"))
+            ) {
+                testConnection(); // Update availability status
+            }
             return java.util.List.of();
         }
     }
@@ -279,12 +399,24 @@ public class DatabaseManager {
         }
 
         if (!databaseAvailable || messageRepository == null) {
-            return 0L;
+            // Re-test connection if previously unavailable
+            if (!testConnection()) {
+                return 0L;
+            }
         }
 
         try {
             return messageRepository.count();
         } catch (Exception e) {
+            // Test connection and update availability on failure
+            if (
+                e.getMessage() != null &&
+                (e.getMessage().contains("FATAL: terminating connection") ||
+                    e.getMessage().contains("SQL Error") ||
+                    e.getMessage().contains("could not execute statement"))
+            ) {
+                testConnection(); // Update availability status
+            }
             return 0L;
         }
     }
