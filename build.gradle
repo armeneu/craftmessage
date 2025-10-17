@@ -1,0 +1,94 @@
+plugins {
+    id 'fabric-loom' version '1.10.1'
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "Fabric"
+        url = "https://maven.fabricmc.net/"
+    }
+    maven {
+        name = "JitPack"
+        url = "https://jitpack.io"
+    }
+
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // PostgreSQL JDBC driver - include in JAR
+    include(implementation('org.postgresql:postgresql:42.7.3'))
+
+    // Hibernate 6.x with JPA Repository support
+    include(implementation('org.hibernate.orm:hibernate-core:6.6.7.Final'))
+    include(implementation('jakarta.persistence:jakarta.persistence-api:3.1.0'))
+    include(implementation('jakarta.transaction:jakarta.transaction-api:2.0.1'))
+    include(implementation('org.jboss.logging:jboss-logging:3.5.3.Final'))
+    include(implementation('net.bytebuddy:byte-buddy:1.14.18'))
+    include(implementation('org.antlr:antlr4-runtime:4.13.1'))
+    include(implementation('com.fasterxml:classmate:1.5.1'))
+    include(implementation('org.hibernate.common:hibernate-commons-annotations:6.0.6.Final'))
+    include('io.smallrye:jandex:3.5.0')
+
+    // JAXB dependencies for Hibernate 6.x XML processing
+    include(implementation('jakarta.xml.bind:jakarta.xml.bind-api:4.0.2'))
+    include(implementation('com.sun.xml.bind:jaxb-core:4.0.5'))
+    include(implementation('com.sun.xml.bind:jaxb-impl:4.0.5'))
+    include(implementation('jakarta.activation:jakarta.activation-api:2.1.3'))
+
+
+}
+
+sourceSets {
+    main {
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "minecraft_version", project.minecraft_version
+    inputs.property "loader_version", project.loader_version
+    filteringCharset "UTF-8"
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version,
+                "minecraft_version": project.minecraft_version,
+                "loader_version": project.loader_version
+    }
+}
+
+def targetJavaVersion = 21
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = "UTF-8"
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        it.options.release.set(targetJavaVersion)
+    }
+}
+
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaToolchainSpec::languageVersion.by(javaVersion)
+    }
+    withSourcesJar()
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.base.archivesName.get()}"}
+    }
+}
