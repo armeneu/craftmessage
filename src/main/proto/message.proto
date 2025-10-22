@@ -5,3 +5,4 @@ package com.example.craftmessage;
 message Message {
   string text = 1;
 }
+
