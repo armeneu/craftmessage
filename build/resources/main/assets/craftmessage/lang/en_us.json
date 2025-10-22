@@ -1,0 +1,9 @@
+{
+  "key.craftmessage.open_message_screen": "Open Message Screen",
+  "category.craftmessage.general": "CraftMessage",
+  "screen.craftmessage.message": "Send Message",
+  "message.craftmessage.sent": "Message sent",
+  "message.craftmessage.not_sent": "Message not sent",
+  "message.craftmessage.empty": "Message cannot be empty!",
+  "message.craftmessage.error": "Error sending message"
+}

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd">
+    <persistence-unit name="craftmessage" transaction-type="RESOURCE_LOCAL">
+        <description>CraftMessage Database Persistence Unit</description>
+
+        <!-- Explicitly list entity classes -->
+        <class>com.example.craftmessage.MessageEntity</class>
+
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+
+        <properties>
+            <!-- Database connection -->
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5433/minecraft"/>
+            <property name="jakarta.persistence.jdbc.user" value="minecraft"/>
+            <property name="jakarta.persistence.jdbc.password" value="password"/>
+            <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
+
+            <!-- Hibernate configuration -->
+            <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect"/>
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+
+            <!-- Connection pool -->
+            <property name="hibernate.connection.pool_size" value="5"/>
+
+            <!-- Disable second level cache -->
+            <property name="hibernate.cache.use_second_level_cache" value="false"/>
+            <property name="hibernate.cache.use_query_cache" value="false"/>
+
+            <!-- Disable validation for now -->
+            <property name="jakarta.persistence.validation.mode" value="none"/>
+        </properties>
+    </persistence-unit>
+</persistence>

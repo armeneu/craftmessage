@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "craftmessage",
+  "version": "${version}",
+  "name": "CraftMessage",
+  "description": "A simple mod for sending messages via Protobuf to PostgreSQL",
+  "authors": ["Example"],
+  "contact": {
+    "homepage": "https://example.com/",
+    "sources": "https://github.com/example/craftmessage"
+  },
+  "license": "MIT",
+  "icon": "assets/craftmessage/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.example.craftmessage.CraftMessageMod"],
+    "client": ["com.example.craftmessage.CraftMessageClient"]
+  },
+  "mixins": ["craftmessage.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.9",
+    "minecraft": "1.21.8",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
