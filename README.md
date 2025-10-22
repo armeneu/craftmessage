@@ -1,4 +1,4 @@
-# CraftMessage Minecraft Mod
+# CraftMessage Minecraft Mod v1.1
 
 A simple Minecraft mod that allows players to send messages via Protobuf to a PostgreSQL database.
 
